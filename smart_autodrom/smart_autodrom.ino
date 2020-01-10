@@ -29,6 +29,8 @@
 #define ESTAKADA_WAITING_TIME                     5000                  //  Время ожидания на эстакаде.
 #define RESTART_GAME_TIME                         7000                  //  Время включения надписи СТАРТ после финиша (перезапуск игры)
 #define NUMBER_OF_DECIMAL_PLACES                  1                     //  Количество знаков после запятой
+#define MAX                                       4095                  //  Максимальное значение ШИМ для силового ключа
+#define MIDDLE                                    1024                  //  Среднее значение ШИМ для силового ключа
 //----------------------------------------------------------------------//
 //  НАСТРОЙКИ ПЛЕЕРА:
 //----------------------------------------------------------------------//
@@ -110,7 +112,7 @@ void setup() {
   PRINTER.setSize('L');                                     //  Устанавливаем крупный размер шрифта 'L' (Large)
   PRINTER.justify('C');                                     //  Устанавливаем выравнивание текста по центру 'C' (Center)
   PRINTER.setLineHeight(20);                                //  Устанавливаем межстрочный интервал в 2,0 мм.
-  PRINTER.println(F("----------"));                         //  Печатаем тестовую линию отрыва чека
+  PRINTER.println(F("-----------------"));                  //  Печатаем тестовую линию отрыва чека
   PRINTER.feed(3);                                          //  Прокручиваем ленту на 3 строки
   PWRKEY_A.begin();                                         //  Инициируем работу с модулем реле
   PWRKEY_B.begin();                                         //  Инициируем работу с модулем реле
@@ -132,7 +134,7 @@ void setup() {
   TrackPositionCode = GAME_OVER;                            //  Переходим к позиции GAME_OVER (это потушит все стрелки и приведёт к переходу в позицию READY_TO_START).
   delay(2000);                                              //  Устанавливаем задержку для того, чтобы АЦП Expander'а настроился
   //--------------------------------------------------------//
-  //  Калибруем значения границ для датчиков линии:
+  //  Переопределяем границы сработки, для чего сначала считываем текущее значение с датчиков:
   //--------------------------------------------------------//
   StartSens               = EXPAND_F.analogRead(6);         //  Датчик начала движения.
   EstakadatSens           = EXPAND_F.analogRead(7);         //  Датчик эстакады.
@@ -147,54 +149,43 @@ void setup() {
   SnakeSensThree          = analogRead(THIRD_SNAKE_SENS);   //  Третий датчик змейки.
   //--------------------------------------------------------//
   //  Нижняя граница датчика начала движения:
-  //--------------------------------------------------------//
   LowValStartSens         = StartSens - (StartSens * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
   //  Нижняя граница датчика эстакады:
-  //--------------------------------------------------------//
   LowValEstakadaSens      = EstakadatSens - (EstakadatSens * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
   //  Нижняя граница датчика, указывающего совершить парковку:
-  //--------------------------------------------------------//
   LowValStartParkingSens  = StartParkingSens - (StartParkingSens * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
   //  Нижняя граница датчика парковки:
-  //--------------------------------------------------------//
   LowValStopParkingSens   = StopParkingSens - (StopParkingSens * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
   //  Нижняя граница датчика завершения трассы:
-  //--------------------------------------------------------//
   LowValFinishSens        = FinishSens - (FinishSens * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
   //  Нижняя граница датчика бордюра:
-  //--------------------------------------------------------//
   LowValBoardSensOne      = BoardSensOne - (BoardSensOne * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
   //  Нижняя граница датчика бордюра:
-  //--------------------------------------------------------//
   LowValBoardSensTwo      = BoardSensTwo - (BoardSensTwo * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
   //  Нижняя граница датчика бордюра:
-  //--------------------------------------------------------//
   LowValBoardSensThree    = BoardSensThree - (BoardSensThree * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
-  //  Нижняя граница датчика 1 змейки:
-  //--------------------------------------------------------//
+  //  Нижняя граница 1 датчика змейки:
   LowValSnakeSensOne      = SnakeSensOne - (SnakeSensOne * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
-  //  Нижняя граница датчика 2 змейки:
-  //--------------------------------------------------------//
+  //  Нижняя граница 2 датчика змейки:
   LowValSnakeSensTwo      = SnakeSensTwo - (SnakeSensTwo * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
   //--------------------------------------------------------//
-  //  Нижняя граница датчика 3 змейки:
-  //--------------------------------------------------------//
+  //  Нижняя граница 3 датчика змейки:
   LowValSnakeSensThree    = SnakeSensThree - (SnakeSensThree * DECREASE_COEFFICIENT_FOR_SET_SENS_BOARD);
 }
 //------------------------------------------------------------------//
 //------------------------------------------------------------------//
 void loop() {
   //----------------------------------------------------------------//
-  //  Обновляем значения датчиков:
+  //  Считываем значения с датчиков линии:
   //----------------------------------------------------------------//                                             CLOSE / OPEN
   StartSens        = EXPAND_F.analogRead(6);                        //  Датчик начала движения.                   ( 2400 / 4094 )
   EstakadatSens    = EXPAND_F.analogRead(7);                        //  Датчик эстакады.                          ( 1900 / 4094 )
@@ -246,19 +237,19 @@ void loop() {
   else if (TrackPositionCode == START_RACE) {
     switch (ArrowState) {                                           //  Переключаем стрелки направления движения, чтобы они включались змейкой, показывая направление движения
       case 0:
-        PWRKEY_E.analogWrite(2, 4095);
-        PWRKEY_E.analogWrite(3, 1024);
-        PWRKEY_A.analogWrite(4, 1024);
+        PWRKEY_E.analogWrite(2, MAX);
+        PWRKEY_E.analogWrite(3, MIDDLE);
+        PWRKEY_A.analogWrite(4, MIDDLE);
         break;
       case 1:
-        PWRKEY_E.analogWrite(2, 1024);
-        PWRKEY_E.analogWrite(3, 4095);
-        PWRKEY_A.analogWrite(4, 1024);
+        PWRKEY_E.analogWrite(2, MIDDLE);
+        PWRKEY_E.analogWrite(3, MAX);
+        PWRKEY_A.analogWrite(4, MIDDLE);
         break;
       case 2:
-        PWRKEY_E.analogWrite(2, 1024);
-        PWRKEY_E.analogWrite(3, 1024);
-        PWRKEY_A.analogWrite(4, 4095);
+        PWRKEY_E.analogWrite(2, MIDDLE);
+        PWRKEY_E.analogWrite(3, MIDDLE);
+        PWRKEY_A.analogWrite(4, MAX);
         break;
     }
     ArrowState++; if (ArrowState > 2) ArrowState = 0;               //  Если счётчик переключения превысил количество переключаемых состояний, то сбрасываем его в 0
@@ -291,23 +282,24 @@ void loop() {
   else if (TrackPositionCode == GO_FROM_ESTAKADA) {
     switch (ArrowState) {                                           //  Переключаем стрелки направления движения, чтобы они включались змейкой, показывая направление движения
       case 0:
-        PWRKEY_A.analogWrite(2, 4095);
-        PWRKEY_A.analogWrite(1, 1024);
-        PWRKEY_B.analogWrite(3, 1024);
+        PWRKEY_A.analogWrite(2, MAX);
+        PWRKEY_A.analogWrite(1, MIDDLE);
+        PWRKEY_B.analogWrite(3, MIDDLE);
         break;
       case 1:
-        PWRKEY_A.analogWrite(2, 1024);
-        PWRKEY_A.analogWrite(1, 4095);
-        PWRKEY_B.analogWrite(3, 1024);
+        PWRKEY_A.analogWrite(2, MIDDLE);
+        PWRKEY_A.analogWrite(1, MAX);
+        PWRKEY_B.analogWrite(3, MIDDLE);
         break;
       case 2:
-        PWRKEY_A.analogWrite(2, 1024);
-        PWRKEY_A.analogWrite(1, 1024);
-        PWRKEY_B.analogWrite(3, 4095);
+        PWRKEY_A.analogWrite(2, MIDDLE);
+        PWRKEY_A.analogWrite(1, MIDDLE);
+        PWRKEY_B.analogWrite(3, MAX);
         break;
     }
     ArrowState++; if (ArrowState > 2) ArrowState = 0;               //  Если счётчик переключения превысил количество переключаемых состояний, то сбрасываем его в 0
     if (StartParkingSens < LowValStartParkingSens) {                //  Если зафиксирован наезд на датчик перед надписью СТОП в углу, то ...
+      MP3_PLAYER.play(SOUND_BEEP);                                  //  Включаем указанный трек
       ArrowState = 0;                                               //  обнуляем счётчик включения элементов
       PWRKEY_A.digitalWrite(1, LOW); PWRKEY_A.digitalWrite(2, LOW); //  Отключаем первые стрелки после эстакады.
       TrackPositionCode = STOP_BEFORE_PARKING;                      //  Переходим к позиции STOP_BEFORE_PARKING.
@@ -331,12 +323,12 @@ void loop() {
   else if (TrackPositionCode == GO_TO_PARKING) {
     switch (ArrowState) {                                           //  Переключаем стрелки направления движения, чтобы они включались змейкой, показывая направление движения
       case 0:
-        PWRKEY_A.analogWrite(3, 4095);
-        PWRKEY_D.analogWrite(2, 1024);
+        PWRKEY_A.analogWrite(3, MAX);
+        PWRKEY_D.analogWrite(2, MIDDLE);
         break;
       case 1:
-        PWRKEY_A.analogWrite(3, 1024);
-        PWRKEY_D.analogWrite(2, 4095);
+        PWRKEY_A.analogWrite(3, MIDDLE);
+        PWRKEY_D.analogWrite(2, MAX);
         break;
     }
     ArrowState++; if (ArrowState > 1) ArrowState = 0;               //  Если счётчик переключения превысил количество переключаемых состояний, то сбрасываем его в 0
@@ -366,10 +358,10 @@ void loop() {
   else if (TrackPositionCode == GO_TO_ANGLE) {
     switch (ArrowState) {                                           //  Переключаем стрелку направления движения, чтобы она включалась змейкой, показывая направление движения
       case 0:
-        PWRKEY_D.analogWrite(1, 4095);
+        PWRKEY_D.analogWrite(1, MAX);
         break;
       case 1:
-        PWRKEY_D.analogWrite(1, 1024);
+        PWRKEY_D.analogWrite(1, MIDDLE);
         break;
     }
     ArrowState++; if (ArrowState > 1) ArrowState = 0;               //  Если счётчик переключения превысил количество переключаемых состояний, то сбрасываем его в 0
@@ -385,12 +377,12 @@ void loop() {
   else if (TrackPositionCode == GO_TO_SNAKE_FIRST) {
     switch (ArrowState) {                                           //  Переключаем стрелки направления движения, чтобы они включались змейкой, показывая направление движения
       case 0:
-        PWRKEY_B.analogWrite(1, 4095);
-        PWRKEY_B.analogWrite(2, 1024);
+        PWRKEY_B.analogWrite(1, MAX);
+        PWRKEY_B.analogWrite(2, MIDDLE);
         break;
       case 1:
-        PWRKEY_B.analogWrite(1, 1024);
-        PWRKEY_B.analogWrite(2, 4095);
+        PWRKEY_B.analogWrite(1, MIDDLE);
+        PWRKEY_B.analogWrite(2, MAX);
         break;
     }
     ArrowState++; if (ArrowState > 1) ArrowState = 0;               //  Если счётчик переключения превысил количество переключаемых состояний, то сбрасываем его в 0
@@ -402,17 +394,17 @@ void loop() {
     }
   }
   //----------------------------------------------------------------//
-  //  Позиция движения к второму датчику змейки:
+  //  Позиция движения ко второму датчику змейки:
   //----------------------------------------------------------------//
   else if (TrackPositionCode == GO_TO_SNAKE_SECOND) {
     switch (ArrowState) {                                           //  Переключаем стрелки направления движения, чтобы они включались змейкой, показывая направление движения
       case 0:
-        PWRKEY_D.analogWrite(3, 4095);
-        PWRKEY_E.analogWrite(4, 1024);
+        PWRKEY_D.analogWrite(3, MAX);
+        PWRKEY_E.analogWrite(4, MIDDLE);
         break;
       case 1:
-        PWRKEY_D.analogWrite(3, 1024);
-        PWRKEY_E.analogWrite(4, 4095);
+        PWRKEY_D.analogWrite(3, MIDDLE);
+        PWRKEY_E.analogWrite(4, MAX);
         break;
     }
     ArrowState++; if (ArrowState > 1) ArrowState = 0;               //  Если счётчик переключения превысил количество переключаемых состояний, то сбрасываем его в 0
@@ -428,12 +420,12 @@ void loop() {
   else if (TrackPositionCode == GO_TO_SNAKE_THIRD) {
     switch (ArrowState) {                                           //  Переключаем стрелки направления движения, чтобы они включались змейкой, показывая направление движения
       case 0:
-        PWRKEY_D.analogWrite(4, 4095);
-        PWRKEY_C.analogWrite(3, 1024);
+        PWRKEY_D.analogWrite(4, MAX);
+        PWRKEY_C.analogWrite(3, MIDDLE);
         break;
       case 1:
-        PWRKEY_D.analogWrite(4, 1024);
-        PWRKEY_C.analogWrite(3, 4095);
+        PWRKEY_D.analogWrite(4, MIDDLE);
+        PWRKEY_C.analogWrite(3, MAX);
         break;
     }
     ArrowState++; if (ArrowState > 1) ArrowState = 0;               //  Если счётчик переключения превысил количество переключаемых состояний, то сбрасываем его в 0
@@ -449,12 +441,12 @@ void loop() {
   else if (TrackPositionCode == GO_TO_FINISH) {
     switch (ArrowState) {                                           //  Переключаем стрелку и надпись ФИНИШ, чтобы они включались змейкой, показывая направление движения
       case 0:
-        PWRKEY_C.analogWrite(2, 4095);
-        PWRKEY_C.analogWrite(1, 1024);
+        PWRKEY_C.analogWrite(2, MAX);
+        PWRKEY_C.analogWrite(1, MIDDLE);
         break;
       case 1:
-        PWRKEY_C.analogWrite(2, 1024);
-        PWRKEY_C.analogWrite(1, 4095);
+        PWRKEY_C.analogWrite(2, MIDDLE);
+        PWRKEY_C.analogWrite(1, MAX);
         break;
     }
     ArrowState++; if (ArrowState > 1) ArrowState = 0;               //  Если счётчик переключения превысил количество переключаемых состояний, то сбрасываем его в 0
@@ -466,7 +458,7 @@ void loop() {
         EEPROM.put(EEPROM_ADRESS, Highscore);                       //  записываем его в энергонезависимую память
         DISP_RECORD.print(Highscore, NUMBER_OF_DECIMAL_PLACES);     //  Обновляем значение рекорда на индикаторе рекордов
       } else {                                                      //  Если же время заезда БОЛЬШЕ времени рекорда, то
-        MP3_PLAYER.play(SOUND_BEEP);                                //  Включаем указанный трек
+        MP3_PLAYER.play(SOUND_BEEP);                                //  включаем указанный трек
       }
       StartRaceFlag = true;                                         //  Устанавливаем флаг готовности трассы к новому заезду
       ArrowState = 0;                                               //  Обнуляем счётчик включения элементов
@@ -484,13 +476,15 @@ void loop() {
       if (NewRecordFlag) {                                          //  Если установлен флаг нового рекорда скорости, то...
         NewRecordFlag = false;                                      //  Сбрасываем флаг нового рекорда
         PRINTER.setLineHeight(60);                                  //  Устанавливаем межстрочный интервал в 6,0 мм.
+        PRINTER.println(F(" "));                                    //  Выводим текст
         PRINTER.println(F("A new record!"));                        //  Выводим текст о новом рекорде
+        PRINTER.println(F(" "));                                    //  Выводим текст
       }
       PRINTER.setLineHeight(70);                                    //  Устанавливаем межстрочный интервал в 7,0 мм.
       PRINTER.setSize('M');                                         //  Устанавливаем средний размер шрифта 'M' (Middle)
       PRINTER.justify('L');                                         //  Устанавливаем выравнивание текста по левому краю 'L' (Left)
-      PRINTER.println(F("Your name:"));                             //  Выводим текст
-      PRINTER.println(F("Your  tel:"));                             //  Выводим текст
+      PRINTER.println(F("Your name:__________________"));           //  Выводим текст
+      PRINTER.println(F("Your  tel:__________________"));           //  Выводим текст
       PRINTER.feed(2);                                              //  Прокручиваем ленту на 2 строки
       PWRKEY_C.digitalWrite(2, LOW);                                //  Выключаем элементы перед финишной линией
       TrackPositionCode = CROSS_FINISH_LINE;                        //  Переходим к позиции CROSS_FINISH_LINE.
@@ -518,8 +512,6 @@ void loop() {
     }
     DISP_COUNT.print( "----" );                                     //  Вывод текста ожидания начала гонки на индикатор
     DISP_RECORD.print(Highscore, NUMBER_OF_DECIMAL_PLACES);         //  Выводим на индикатор значение текущего рекорда времени
-    DemoCount = 0;                                                  //  Обнуляем счётчик режима работы элементов в демо-режиме
-    demo_resume();                                                  //  Включаем демонстрационный режим работы платформы
 
     //  Если зафиксирован наезд на датчик в линии ФИНИША и установлен режим GAME_OVER, то ...
     if (FinishSens < LowValFinishSens && TrackPositionCode == GAME_OVER) {
@@ -529,149 +521,32 @@ void loop() {
       PWRKEY_D.digitalWrite(ALL_CHANNEL, LOW);                      //  Выключаем все каналы модуля.
       PWRKEY_E.digitalWrite(ALL_CHANNEL, LOW);                      //  Выключаем все каналы модуля.
       TrackPositionCode = READY_TO_START;                           //  Переходим к позиции READY_TO_START
+    } else {
+      demo_resume();                                                //  Включаем демонстрационный режим работы платформы
     }
   }
 }
-//------------------------------------------------------------------//
-//------------------------------------//
-// Демо-режим работы стенда
-//------------------------------------//
+//------------------------------------------------------------//
+// Демо-режим работы стенда:
 void demo_resume() {
-  DemoCount++;                        //  Увеличиваем счётчик для перехода к следующей позиции работы элемента платформы
-  if (DemoCount > 18) DemoCount = 0;  //  Если значение счётчика превысило количество элементов на платформе - сбрасываем его в 0
-  switch (DemoCount) {                //  Переключаем все элементы платформы, чтобы они включались змейкой по очереди
-    case 0:
-      PWRKEY_E.analogWrite(1, 4095); PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512);  PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512);  PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512);  PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512);  PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512);  PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512); break;
-    case 1:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 4095); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512);  PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512);  PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512);  PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512);  PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512);  PWRKEY_C.analogWrite(1, 512); break;
-    case 2:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 4095);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512);  break;
-    case 3:
-      PWRKEY_E.analogWrite(1, 512);  PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 4095); PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512);  PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512);  PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512);  PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512);  PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512); break;
-    case 4:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512);  PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 4095); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512);  PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512);  PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512);  PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512);  PWRKEY_C.analogWrite(1, 512); break;
-    case 5:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 4095);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512);  break;
-    case 6:
-      PWRKEY_E.analogWrite(1, 512);  PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512);  PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 4095); PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512);  PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512);  PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512);  PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512); break;
-    case 7:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512);  PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512);  PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 4095); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512);  PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512);  PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512);  PWRKEY_C.analogWrite(1, 512); break;
-    case 8:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 4095);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512);  break;
-    case 9:
-      PWRKEY_E.analogWrite(1, 512);  PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512);  PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512);  PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 4095); PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512);  PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512);  PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512); break;
-    case 10:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512);  PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512);  PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512);  PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 4095); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512);  PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512);  PWRKEY_C.analogWrite(1, 512); break;
-    case 11:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 4095);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512);  break;
-    case 12:
-      PWRKEY_E.analogWrite(1, 512);  PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512);  PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512);  PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512);  PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 4095); PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512);  PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512); break;
-    case 13:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512);  PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512);  PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512);  PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512);  PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 4095); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512);  PWRKEY_C.analogWrite(1, 512); break;
-    case 14:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 4095);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512);  break;
-    case 15:
-      PWRKEY_E.analogWrite(1, 512);  PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512);  PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512);  PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512);  PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512);  PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 4095); PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512); break;
-    case 16:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512);  PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512);  PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512);  PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512);  PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512);  PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 4095); PWRKEY_C.analogWrite(1, 512); break;
-    case 17:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 4095); break;
-    case 18:
-      PWRKEY_E.analogWrite(1, 512); PWRKEY_E.analogWrite(2, 512); PWRKEY_E.analogWrite(3, 512);
-      PWRKEY_A.analogWrite(4, 512); PWRKEY_A.analogWrite(2, 512); PWRKEY_A.analogWrite(1, 512);
-      PWRKEY_B.analogWrite(3, 512); PWRKEY_D.analogWrite(2, 512); PWRKEY_A.analogWrite(3, 512);
-      PWRKEY_D.analogWrite(1, 512); PWRKEY_B.analogWrite(2, 512); PWRKEY_B.analogWrite(1, 512);
-      PWRKEY_D.analogWrite(3, 512); PWRKEY_E.analogWrite(4, 512); PWRKEY_D.analogWrite(4, 512);
-      PWRKEY_C.analogWrite(3, 512); PWRKEY_C.analogWrite(2, 512); PWRKEY_C.analogWrite(1, 512); break;
+  for (DemoCount = 0; DemoCount < 19; DemoCount ++) {         //  Проходимся в цикле по всем элементам поля и зажигаем при каждом проходе следующий элемент
+    PWRKEY_E.analogWrite(1, DemoCount == 0  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 0,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_E.analogWrite(2, DemoCount == 1  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 1,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_E.analogWrite(3, DemoCount == 2  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 2,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_A.analogWrite(4, DemoCount == 3  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 3,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_A.analogWrite(2, DemoCount == 4  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 4,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_A.analogWrite(1, DemoCount == 5  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 5,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_B.analogWrite(3, DemoCount == 6  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 6,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_D.analogWrite(2, DemoCount == 7  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 7,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_A.analogWrite(3, DemoCount == 8  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 8,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_D.analogWrite(1, DemoCount == 9  ? MAX : MIDDLE);  //  Если переменная DemoCount равна 9,  то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_B.analogWrite(2, DemoCount == 10 ? MAX : MIDDLE);  //  Если переменная DemoCount равна 10, то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_B.analogWrite(1, DemoCount == 11 ? MAX : MIDDLE);  //  Если переменная DemoCount равна 11, то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_D.analogWrite(3, DemoCount == 12 ? MAX : MIDDLE);  //  Если переменная DemoCount равна 12, то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_E.analogWrite(4, DemoCount == 13 ? MAX : MIDDLE);  //  Если переменная DemoCount равна 13, то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_D.analogWrite(4, DemoCount == 14 ? MAX : MIDDLE);  //  Если переменная DemoCount равна 14, то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_C.analogWrite(3, DemoCount == 15 ? MAX : MIDDLE);  //  Если переменная DemoCount равна 15, то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_C.analogWrite(2, DemoCount == 16 ? MAX : MIDDLE);  //  Если переменная DemoCount равна 16, то установить ШИМ в значение MAX, иначе в MIDDLE
+    PWRKEY_C.analogWrite(1, DemoCount == 17 ? MAX : MIDDLE);  //  Если переменная DemoCount равна 17, то установить ШИМ в значение MAX, иначе в MIDDLE
   }
 }
